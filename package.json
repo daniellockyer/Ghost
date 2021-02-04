@@ -102,6 +102,7 @@
     "intl": "1.2.5",
     "intl-messageformat": "5.4.3",
     "js-yaml": "3.14.1",
+    "json-stream-stringify": "2.0.3",
     "jsonpath": "1.1.0",
     "jsonwebtoken": "8.5.1",
     "juice": "7.0.0",

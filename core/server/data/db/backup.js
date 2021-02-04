@@ -1,19 +1,13 @@
 // # Backup Database
 // Provides for backing up the database before making potentially destructive changes
 const fs = require('fs-extra');
+const JsonStreamStringify = require('json-stream-stringify');
 
 const path = require('path');
-const Promise = require('bluebird');
 const config = require('../../../shared/config');
 const logging = require('../../../shared/logging');
 const urlUtils = require('../../../shared/url-utils');
 const exporter = require('../exporter');
-
-const writeExportFile = function writeExportFile(exportResult) {
-    const filename = path.resolve(urlUtils.urlJoin(config.get('paths').contentPath, 'data', exportResult.filename));
-
-    return Promise.resolve(fs.writeFile(filename, JSON.stringify(exportResult.data))).return(filename);
-};
 
 const readBackup = async (filename) => {
     const parsedFileName = path.parse(filename);
@@ -35,21 +29,22 @@ const readBackup = async (filename) => {
  * does an export, and stores this in a local file
  * @returns {Promise<*>}
  */
-const backup = function backup(options) {
+const backup = async function backup(options) {
     logging.info('Creating database backup');
     options = options || {};
 
-    const props = {
-        data: exporter.doExport(options),
-        filename: exporter.fileName(options)
-    };
+    const data = await exporter.doExport(options);
+    const jsonStream = new JsonStreamStringify(data);
 
-    return Promise.props(props)
-        .then(writeExportFile)
-        .then(function successMessage(filename) {
-            logging.info('Database backup written to: ' + filename);
-            return filename;
-        });
+    const filename = await exporter.fileName(options);
+    const filePath = path.resolve(urlUtils.urlJoin(config.get('paths').contentPath, 'data', filename));
+    const writeStream = fs.createWriteStream(filePath);
+
+    jsonStream.once('error', () => logging.error('Error writing export:', jsonStream.stack.join('.')));
+    jsonStream.pipe(writeStream);
+
+    logging.info('Database backup written to: ' + filename);
+    return filename;
 };
 
 module.exports = {
