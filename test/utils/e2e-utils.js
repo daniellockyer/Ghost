@@ -99,11 +99,9 @@ const prepareContentFolder = (options) => {
 // - reload affected services
 const restartModeGhostStart = async ({frontend}) => {
     debug('Reload Mode');
-    // Teardown truncates all tables and also calls urlServiceUtils.reset();
-    await dbUtils.teardown();
 
-    // The tables have been truncated, this runs the fixture init task (init file 2) to re-add our default fixtures
-    await knexMigrator.init({only: 2});
+    urlServiceUtils.reset();
+    await dbUtils.reset();
     debug('init done');
 
     // Reset the settings cache
@@ -152,18 +150,12 @@ const freshModeGhostStart = async (options) => {
         debug('Fresh Start Mode');
     }
 
-    // Reset the DB
-    await knexMigrator.reset({force: true});
-
     // Stop the server (forceStart Mode)
     await stopGhost();
-
     // Reset the settings cache and disable listeners so they don't get triggered further
     settingsService.shutdown();
 
-    // Do a full database initialisation
-    await knexMigrator.init();
-
+    await dbUtils.reset();
     await settingsService.init();
 
     // Reset the URL service generators
